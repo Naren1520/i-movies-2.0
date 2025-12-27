@@ -91,14 +91,15 @@ export const MovieDetails: React.FC = () => {
         return;
       }
       
-      const prompt = `Provide interesting and detailed information about the movie "${movie.title}" (${movie.release_date ? new Date(movie.release_date).getFullYear() : 'Unknown'}). Include:
-1. Background and production trivia
-2. Notable achievements and awards
-3. Critical reception and impact
-4. Interesting facts about the director/cast
-5. Why this movie is worth watching
+      const prompt = `Provide comprehensive and detailed information about the movie "${movie.title}" (${movie.release_date ? new Date(movie.release_date).getFullYear() : 'Unknown'}). Include complete details for each section:
 
-Keep the response concise but informative (around 300 words).`;
+1. Background and Production Trivia - Studio, budget, filming locations, production history
+2. Notable Achievements and Awards - Any nominations or wins
+3. Critical Reception and Impact - Reviews and audience response
+4. Interesting Facts - About the director, cast, or production
+5. Why Watch It - Key reasons this movie is worth watching
+
+Provide full, detailed paragraphs for each section. Make it informative and engaging. Use complete sentences and expand on each point.`;
       
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
@@ -119,7 +120,7 @@ Keep the response concise but informative (around 300 words).`;
             ],
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 800,
+              maxOutputTokens: 2000,
             },
           }),
         }
@@ -410,58 +411,60 @@ Keep the response concise but informative (around 300 words).`;
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowKnowMore(false)}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl max-h-[80vh] overflow-y-auto relative"
+              className="bg-white dark:bg-gray-800 rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:max-w-2xl md:max-h-[80vh] max-h-[95vh] overflow-hidden flex flex-col relative"
             >
               {/* Header */}
-              <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 flex items-center justify-between rounded-t-2xl">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-6 h-6" />
-                  <h3 className="text-2xl font-bold">Movie Insights</h3>
+              <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white p-4 md:p-6 flex items-center justify-between rounded-t-2xl md:rounded-t-2xl z-10">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Sparkles className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
+                  <h3 className="text-lg md:text-2xl font-bold truncate">Movie Insights</h3>
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowKnowMore(false)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0 ml-2"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 md:w-6 md:h-6" />
                 </motion.button>
               </div>
 
-              {/* Content */}
-              <div className="p-6 md:p-8">
-                {loadingGemini ? (
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400 font-medium">Fetching AI insights...</p>
-                  </div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="space-y-4"
-                  >
-                    <div className="mb-4 pb-4 border-b-2 border-gray-200 dark:border-gray-700">
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{movie?.title}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {movie?.release_date ? new Date(movie.release_date).getFullYear() : 'Unknown'}
-                      </p>
+              {/* Content - Scrollable */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 md:p-8">
+                  {loadingGemini ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4" />
+                      <p className="text-gray-600 dark:text-gray-400 font-medium text-center">Fetching AI insights...</p>
                     </div>
-                    <div className="prose dark:prose-invert prose-sm max-w-none">
-                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                        {geminiInfo}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="space-y-4"
+                    >
+                      <div className="mb-4 pb-4 border-b-2 border-gray-200 dark:border-gray-700">
+                        <h4 className="text-base md:text-lg font-bold text-gray-900 dark:text-white mb-2">{movie?.title}</h4>
+                        <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+                          {movie?.release_date ? new Date(movie.release_date).getFullYear() : 'Unknown'}
+                        </p>
+                      </div>
+                      <div className="prose dark:prose-invert prose-sm max-w-none">
+                        <p className="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                          {geminiInfo}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
               </div>
 
               {/* Footer */}
@@ -470,13 +473,13 @@ Keep the response concise but informative (around 300 words).`;
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="sticky bottom-0 bg-gray-50 dark:bg-gray-700/50 p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end"
+                  className="bg-gray-50 dark:bg-gray-700/50 p-4 md:p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end"
                 >
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowKnowMore(false)}
-                    className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all"
+                    className="px-4 md:px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all text-sm md:text-base"
                   >
                     Close
                   </motion.button>
