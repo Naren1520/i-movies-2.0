@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Star, Clock, Calendar, Play, Users, Film } from 'lucide-react';
+import { ArrowLeft, Heart, Star, Clock, Calendar, Play, Users, Film, Sparkles, X } from 'lucide-react';
 import { getMovieDetails, getPosterUrl, Movie } from '../utils/api';
 import { searchMovieTrailer, YoutubeVideo } from '../utils/youtube';
 import { addFavorite, removeFavorite, isFavorite, addRecentlyViewed } from '../utils/localStorage';
@@ -17,6 +17,9 @@ export const MovieDetails: React.FC = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [video, setVideo] = useState<YoutubeVideo | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(false);
+  const [showKnowMore, setShowKnowMore] = useState(false);
+  const [geminiInfo, setGeminiInfo] = useState('');
+  const [loadingGemini, setLoadingGemini] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -71,6 +74,80 @@ export const MovieDetails: React.FC = () => {
         movieTitle: movie?.title
       }
     });
+  };
+
+  const handleKnowMore = async () => {
+    if (!movie) return;
+    
+    setShowKnowMore(true);
+    setLoadingGemini(true);
+    
+    try {
+      const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      
+      if (!geminiApiKey) {
+        setGeminiInfo('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
+        setLoadingGemini(false);
+        return;
+      }
+      
+      const prompt = `Provide interesting and detailed information about the movie "${movie.title}" (${movie.release_date ? new Date(movie.release_date).getFullYear() : 'Unknown'}). Include:
+1. Background and production trivia
+2. Notable achievements and awards
+3. Critical reception and impact
+4. Interesting facts about the director/cast
+5. Why this movie is worth watching
+
+Keep the response concise but informative (around 300 words).`;
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+            },
+          }),
+        }
+      );
+      
+      const data = await response.json();
+      
+      // Check for API errors
+      if (!response.ok) {
+        const errorMessage = data.error?.message || `HTTP Error: ${response.status}`;
+        console.error('Gemini API Error:', data);
+        throw new Error(errorMessage);
+      }
+      
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        console.error('Unexpected API response:', data);
+        throw new Error('Invalid response format from Gemini API');
+      }
+      
+      const info = data.candidates[0].content.parts[0].text || 'Could not retrieve information.';
+      setGeminiInfo(info);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      console.error('Know More Error:', errorMessage);
+      setGeminiInfo(`Error: ${errorMessage}\n\nPossible solutions:\n1. Check your Gemini API key in .env file\n2. Verify API key has proper permissions\n3. Check internet connection\n4. Try again in a moment (rate limit)`);
+    } finally {
+      setLoadingGemini(false);
+    }
   };
 
   if (loading) {
@@ -278,6 +355,20 @@ export const MovieDetails: React.FC = () => {
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm md:text-base">
                 {movie.overview || 'No overview available.'}
               </p>
+              
+              {/* Know More Button */}
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleKnowMore}
+                className="mt-4 px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold flex items-center gap-2 hover:shadow-lg transition-all"
+              >
+                <Sparkles className="w-4 h-4" />
+                Know More with AI
+              </motion.button>
             </motion.div>
 
             {/* Cast */}
@@ -310,6 +401,91 @@ export const MovieDetails: React.FC = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Know More Modal */}
+      <AnimatePresence>
+        {showKnowMore && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowKnowMore(false)}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl max-h-[80vh] overflow-y-auto relative"
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 flex items-center justify-between rounded-t-2xl">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-6 h-6" />
+                  <h3 className="text-2xl font-bold">Movie Insights</h3>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowKnowMore(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </motion.button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 md:p-8">
+                {loadingGemini ? (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400 font-medium">Fetching AI insights...</p>
+                  </div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-4"
+                  >
+                    <div className="mb-4 pb-4 border-b-2 border-gray-200 dark:border-gray-700">
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{movie?.title}</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {movie?.release_date ? new Date(movie.release_date).getFullYear() : 'Unknown'}
+                      </p>
+                    </div>
+                    <div className="prose dark:prose-invert prose-sm max-w-none">
+                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                        {geminiInfo}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {!loadingGemini && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="sticky bottom-0 bg-gray-50 dark:bg-gray-700/50 p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowKnowMore(false)}
+                    className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all"
+                  >
+                    Close
+                  </motion.button>
+                </motion.div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
